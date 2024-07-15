@@ -11,9 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Nikse.SubtitleEdit.Core.Forms;
-using System.Runtime.InteropServices;
 using System.Drawing.Text;
-using System.Net;
 
 namespace Nikse.SubtitleEdit.Controls
 {
