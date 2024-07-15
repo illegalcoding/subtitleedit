@@ -11,6 +11,9 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Nikse.SubtitleEdit.Core.Forms;
+using System.Runtime.InteropServices;
+using System.Drawing.Text;
+using System.Net;
 
 namespace Nikse.SubtitleEdit.Controls
 {
@@ -820,10 +823,62 @@ namespace Nikse.SubtitleEdit.Controls
                         // ignore
                     }
                 }
-
+ 
                 // current video position
                 if (_currentVideoPositionSeconds > 0 && !currentPosDone && currentPositionPos > 0 && currentPositionPos < Width)
                 {
+                    var curfps = Configuration.Settings.General.CurrentFrameRate;
+                    var oneFrameTime = 1 / curfps;
+                    for(int i = 0; i < _shotChanges.Count; i++)
+                    {
+                        var time = _shotChanges[i];
+                        if(time != _currentVideoPositionSeconds)
+                        {
+                            if(time > _currentVideoPositionSeconds)
+                            {
+                                var diff = time - _currentVideoPositionSeconds;
+                                if(diff <= oneFrameTime*15 && diff >= Math.Round(oneFrameTime))
+                                {
+                                    var fontFamily = new FontFamily("Segoe UI");
+                                    var font = new Font(fontFamily, 17, FontStyle.Regular, GraphicsUnit.Pixel);
+                                    var solidBrush = new SolidBrush(Color.FromName("Black"));
+                                    e.Graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
+                                    /*
+                                     * var strLength = graphics.MeasureString(diffFrames.ToString(), font);
+                                     * var rectBrush = new SolidBrush(Color.FromName("Black"));
+                                     * var rectBorderPen = new Pen(new SolidBrush(Color.FromName("White")));
+                                     * graphics.FillRectangle(rectBrush, (midPoint - (strLength.Width / 2))-1, ((Height / 2) - (strLength.Height / 2))-1, strLength.Width+2, strLength.Height+2);
+                                     * graphics.DrawRectangle(rectBorderPen, (midPoint - (strLength.Width / 2)) - 1, ((Height / 2) - (strLength.Height / 2)) - 1, strLength.Width + 2, strLength.Height + 2);
+                                     * graphics.DrawString(diffFrames.ToString(), font, solidBrush, new PointF(midPoint-(strLength.Width/2), (Height / 2)-(strLength.Height/2)));
+                                     */
+                                    var strLength = e.Graphics.MeasureString(Math.Round(diff / oneFrameTime).ToString(), font);
+                                    var rectBrush = new SolidBrush(Color.FromName("White"));
+                                    var rectBorderPen = new Pen(new SolidBrush(Color.FromName("Black")));
+                                    graphics.FillRectangle(rectBrush, (currentPositionPos - (strLength.Width / 2) + 20)-1, 5 - 1, strLength.Width + 2, strLength.Height + 2);
+                                    graphics.DrawRectangle(rectBorderPen, (currentPositionPos - (strLength.Width / 2) + 20) - 1, 5 - 1, strLength.Width + 2, strLength.Height + 2);
+                                    e.Graphics.DrawString(Math.Round(diff / oneFrameTime).ToString(), font, solidBrush, new PointF(currentPositionPos - (strLength.Width / 2) + 20, 5));
+                                    ////Console.Writeline(Math.Round(diff/oneFrameTime) + " frames right");
+                                }
+                            } else if(time < _currentVideoPositionSeconds)
+                            {
+                                var diff = _currentVideoPositionSeconds - time;
+                                if (diff <= oneFrameTime*15 && diff >= Math.Round(oneFrameTime))
+                                {
+                                    var fontFamily = new FontFamily("Segoe UI");
+                                    var font = new Font(fontFamily, 17, FontStyle.Regular, GraphicsUnit.Pixel);
+                                    var solidBrush = new SolidBrush(Color.FromName("Black"));
+                                    e.Graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
+                                    var strLength = e.Graphics.MeasureString(Math.Round(diff / oneFrameTime).ToString(), font);
+                                    var rectBrush = new SolidBrush(Color.FromName("White"));
+                                    var rectBorderPen = new Pen(new SolidBrush(Color.FromName("Black")));
+                                    graphics.FillRectangle(rectBrush, (currentPositionPos - (strLength.Width / 2) - 20) - 1, 5 - 1, strLength.Width + 2, strLength.Height + 2);
+                                    graphics.DrawRectangle(rectBorderPen, (currentPositionPos - (strLength.Width / 2) - 20) - 1, 5 - 1, strLength.Width + 2, strLength.Height + 2);
+                                    e.Graphics.DrawString(Math.Round(diff / oneFrameTime).ToString(), font, solidBrush, new PointF(currentPositionPos - (strLength.Width / 2) - 20, 5));
+                                    //Console.Writeline(Math.Round(diff / oneFrameTime) + " frames left");
+                                }
+                            }
+                        }
+                    }
                     using (var p = new Pen(CursorColor))
                     {
                         graphics.DrawLine(p, currentPositionPos, 0, currentPositionPos, Height);
@@ -983,6 +1038,7 @@ namespace Nikse.SubtitleEdit.Controls
 
         private void DrawParagraph(Paragraph paragraph, Graphics graphics)
         {
+            
             var currentRegionLeft = SecondsToXPosition(paragraph.StartTime.TotalSeconds - _startPositionSeconds);
             var currentRegionRight = SecondsToXPosition(paragraph.EndTime.TotalSeconds - _startPositionSeconds);
             var currentRegionWidth = currentRegionRight - currentRegionLeft;
@@ -997,6 +1053,50 @@ namespace Nikse.SubtitleEdit.Controls
             using (var pen = new Pen(new SolidBrush(Color.FromArgb(175, 0, 100, 0))) { DashStyle = DashStyle.Solid, Width = 2 })
             {
                 graphics.DrawLine(pen, currentRegionLeft, 0, currentRegionLeft, graphics.VisibleClipBounds.Height);
+                if (paragraph.Number > 1) {
+                    try {
+                        //Console.Writeline("count " + _displayableParagraphs.Count);
+                        int prevParaIdx = -1;
+                        for(int i = 0; i < _displayableParagraphs.Count; i++)
+                        {
+                            if (_displayableParagraphs[i].Number == paragraph.Number - 1)
+                            {
+                                prevParaIdx = i;
+                            }
+                            ////Console.Writeline("_displayableParagraphs[" + i + "].Number: " + _displayableParagraphs[i].Number);
+                        }
+                        var curfps = Configuration.Settings.General.CurrentFrameRate;
+                        var oneFrameTime = 1 / curfps;
+                        Paragraph prevPara = _displayableParagraphs[prevParaIdx];
+                        var diff = paragraph.StartTime.TotalSeconds - prevPara.EndTime.TotalSeconds;
+                        var diffFrames = Math.Round(diff / oneFrameTime);
+                        if (diffFrames > 0) {
+                            //Console.Writeline(diffFrames + " frames between paragraph " + paragraph.Number + " and paragraph " + (paragraph.Number - 1));
+                        }
+                        var lastOutTimeX = SecondsToXPosition(prevPara.EndTime.TotalSeconds - _startPositionSeconds);
+                        //Console.Writeline("lastOutTimeX: " + lastOutTimeX);
+                        //Console.Writeline("currentRegionLeft: " + currentRegionLeft);
+                        var midPoint = (currentRegionLeft - ((currentRegionLeft - lastOutTimeX)/2));
+                        var midPointPen = new Pen(new SolidBrush(Color.FromArgb(255,255,0,255)));
+                        //Console.Writeline("midPoint: " + midPoint);
+                        var fontFamily = new FontFamily("Segoe UI");
+                        var font = new Font(fontFamily, 17, FontStyle.Regular, GraphicsUnit.Pixel);
+                        var solidBrush = new SolidBrush(Color.FromArgb(255, 255, 255, 255));
+                        graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
+                        if (diffFrames < Math.Round(curfps / 2))
+                        {
+                            var strLength = graphics.MeasureString(diffFrames.ToString(), font);
+                            var rectBrush = new SolidBrush(Color.FromName("Black"));
+                            var rectBorderPen = new Pen(new SolidBrush(Color.FromName("White")));
+                            graphics.FillRectangle(rectBrush, (midPoint - (strLength.Width / 2))-1, ((Height / 2) - (strLength.Height / 2))-1, strLength.Width+2, strLength.Height+2);
+                            graphics.DrawRectangle(rectBorderPen, (midPoint - (strLength.Width / 2)) - 1, ((Height / 2) - (strLength.Height / 2)) - 1, strLength.Width + 2, strLength.Height + 2);
+                            graphics.DrawString(diffFrames.ToString(), font, solidBrush, new PointF(midPoint-(strLength.Width/2), (Height / 2)-(strLength.Height/2)));
+                        }
+                        //graphics.DrawLine(midPointPen, midPoint, 0, midPoint, graphics.VisibleClipBounds.Height);
+                    } catch {
+
+                    }
+                }
             }
 
             // right edge

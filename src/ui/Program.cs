@@ -1,6 +1,7 @@
 ﻿using Nikse.SubtitleEdit.Forms;
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -8,11 +9,14 @@ namespace Nikse.SubtitleEdit
 {
     internal static class Program
     {
+        [DllImport("kernel32.dll")]
+        static extern bool AttachConsole(int dwProcessId);
+        private const int ATTACH_PARENT_PROCESS = -1;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        private static void Main()
+        private static void Main(string[] args)
         {
 #if !DEBUG
             // Add the event handler for handling UI thread exceptions to the event.
@@ -24,7 +28,7 @@ namespace Nikse.SubtitleEdit
             // Add the event handler for handling non-UI thread exceptions to the event.
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 #endif
-
+            AttachConsole(ATTACH_PARENT_PROCESS);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new Main());
